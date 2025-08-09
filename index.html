@@ -9,22 +9,43 @@
       --sky1:#70c5ce; --sky2:#a7e7f0;
       --ground:#ded895; --pipe1:#2ea44f; --pipe2:#1f7a3a;
       --text:#ffffff; --panel-bg:rgba(0,0,0,0.18); --center-bg:rgba(0,0,0,0.22);
+      /* exposer les safe-area (iOS notch) */
+      --sat: env(safe-area-inset-top, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
     }
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;color:var(--text)}
-    /* ↓ mobile: occupe tout l’écran utile */
-    body{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;background:linear-gradient(var(--sky1),var(--sky2));padding:8px;min-height:100svh}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;color:var(--text); overflow-x:hidden}
+
+    /* plein écran utile + prise en charge safe-area */
+    body{
+      min-height:100svh;
+      background:linear-gradient(var(--sky1),var(--sky2));
+      padding:calc(8px + var(--sat)) calc(8px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal));
+      display:flex; flex-direction:column;
+    }
 
     header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px}
     header .left,header .right{display:flex;align-items:center;gap:8px}
     header h1{margin:0;font-size:18px;font-weight:800}
     header p{margin:0;font-size:13px;opacity:0.95}
 
-    .container{width:100%;display:flex;gap:12px;align-items:flex-start;flex:1}
-    .wrap{flex:1;display:flex;flex-direction:column;align-items:center}
+    /* wrapper centré robuste (même en paysage iOS) */
+    .container{width:100%;flex:1; display:grid; place-items:center;}
+    .wrap{width:100%; max-width:1200px; display:grid; place-items:center;}
 
-    .canvas-holder{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(var(--sky1),var(--sky2));box-shadow:0 8px 30px rgba(0,0,0,0.15);width:100%;display:flex;align-items:center;justify-content:center}
-    canvas{display:block;max-width:100%;height:auto;background:transparent;touch-action:none;outline:none}
+    .canvas-holder{
+      position:relative; border-radius:12px; overflow:hidden;
+      background:linear-gradient(var(--sky1),var(--sky2));
+      box-shadow:0 8px 30px rgba(0,0,0,0.15);
+      width:100%; max-width:100dvw; margin:0 auto;
+      display:flex; align-items:center; justify-content:center;
+      /* éviter l’écrasement visuel lors des changements d’UI mobile */
+      will-change:padding, width, height;
+    }
+
+    canvas{display:block; background:transparent; touch-action:none; outline:none; margin:0 auto}
 
     .centerMsg{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);text-align:center;color:var(--text);pointer-events:none;padding:18px}
     .centerBox{display:inline-block;padding:18px 20px;border-radius:12px;background:var(--center-bg);backdrop-filter:blur(4px);pointer-events:auto;min-width:220px;border:none}
@@ -46,17 +67,21 @@
 
     footer{margin-top:10px;text-align:center;font-size:12px;color:rgba(255,255,255,0.9)}
 
+    /* petits appareils */
     @media (max-width:900px){
-      .container{flex-direction:column}
       header h1{font-size:16px}
     }
-    /* ↓ encore mieux sur petits téléphones */
     @media (max-width:600px){
-      body{padding:0}
       header{padding:8px 10px}
       header p{display:none}
-      .container{gap:0}
       .canvas-holder{border-radius:0}
+    }
+
+    /* paysage étroit: compacter l’en-tête pour libérer la hauteur */
+    @media (orientation:landscape) and (max-height:520px){
+      header{padding:6px 8px}
+      header h1{font-size:15px}
+      #headerSubtitle{display:none}
     }
 
     input[type="range"]{accent-color:#ffffff88}
@@ -74,7 +99,6 @@
         <option value="night">Nuit</option>
         <option value="retro">Rétro</option>
       </select>
-     
     </div>
     <div class="right">
       <div style="text-align:right">
@@ -147,7 +171,7 @@ function saveHighScore(){ try{ localStorage.setItem('aeroplume_high', String(hig
 function loadHighScore(){ try{ const v = localStorage.getItem('aeroplume_high'); if(v) highScore = Number(v); }catch{} }
 function randRange(a,b){ return a + Math.random()*(b-a); }
 
-function hexToRgb(hex){ const h = hex.replace('#',''); const bigint = parseInt(h,16); if(h.length===3){ return {r:parseInt(h[0]+h[0],16),g:parseInt(h[1]+h[1],16),b:parseInt(h[2]+h[2],16)} } return {r:(bigint>>16)&255,g:(bigint>>8)&255,b:bigint&255}; }
+function hexToRgb(hex){ const h = hex.replace('#',''); const bigint = parseInt(h,16); if(h.length===3){ return {r:parseInt(h[0]+h[0],16),g:parseInt(h[1]+h[1],16),b:parseInt(h[2]+h[2],16)} } return {r:(bigint>>16)&255,g:(bigint>>8)&255,b:(bigint)&255}; }
 function luminance(r,g,b){ const s=[r,g,b].map(v=>v/255).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)); return 0.2126*s[0]+0.7152*s[1]+0.0722*s[2]; }
 function ensureContrast(c1,c2){
   try{
@@ -196,7 +220,7 @@ function vibrate(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch{}
 function flap(){
   if(gameState === 'start'){ gameState='playing'; bird.vy = CONFIG.flapVelocity; updateUI(); return; }
   if(gameState === 'playing'){ bird.vy = CONFIG.flapVelocity; return; }
-  if(gameState === 'gameover'){ resetGame(); return; } // ← après game over: 1er clic = retour à "start" (stationnaire)
+  if(gameState === 'gameover'){ resetGame(); return; } // 1er clic après game over = retour en stationnaire
 }
 
 /* Collisions */
@@ -241,10 +265,14 @@ function draw(){
   const sky2 = cs.getPropertyValue('--sky2')||'#a7e7f0';
   const groundColor = cs.getPropertyValue('--ground')||'#ded895';
   const pipe1 = cs.getPropertyValue('--pipe1')||'#2ea44f';
+
+  // fond
   ctx.fillStyle = sky1; ctx.fillRect(0,0,CONFIG.baseWidth, CONFIG.baseHeight);
-  const g = ctx.createLinearGradient(0,0,0,CONFIG.baseHeight); g.addColorStop(0,sky1); g.addColorStop(0.7,sky2); ctx.fillStyle=g; ctx.fillRect(0,0,CONFIG.baseHeight, CONFIG.baseHeight);
+  const g = ctx.createLinearGradient(0,0,0,CONFIG.baseHeight); g.addColorStop(0,sky1); g.addColorStop(0.7,sky2); ctx.fillStyle=g; ctx.fillRect(0,0,CONFIG.baseWidth, CONFIG.baseHeight);
+
   for(const c of clouds) drawCloud(c);
 
+  // collines
   ctx.fillStyle = '#6bb07e';
   ctx.beginPath();
   ctx.moveTo(0, CONFIG.baseHeight*0.78);
@@ -252,6 +280,7 @@ function draw(){
   ctx.quadraticCurveTo(CONFIG.baseWidth*0.75, CONFIG.baseHeight*0.86, CONFIG.baseWidth, CONFIG.baseHeight*0.78);
   ctx.lineTo(CONFIG.baseWidth, CONFIG.baseHeight); ctx.lineTo(0, CONFIG.baseHeight); ctx.closePath(); ctx.fill();
 
+  // tuyaux
   for(const p of pipes){
     const bodyGrad = ctx.createLinearGradient(p.x,0,p.x+p.width,0);
     bodyGrad.addColorStop(0,pipe1); bodyGrad.addColorStop(1, cs.getPropertyValue('--pipe2')||'#1f7a3a');
@@ -267,11 +296,13 @@ function draw(){
     ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.fillRect(p.x,bottomY,p.width,6);
   }
 
+  // sol
   ctx.fillStyle = groundColor;
   ctx.fillRect(0, CONFIG.baseHeight-CONFIG.groundHeight, CONFIG.baseWidth, CONFIG.groundHeight);
   ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=1;
   for(let i=0;i<CONFIG.baseWidth;i+=16){ ctx.beginPath(); ctx.moveTo(i, CONFIG.baseHeight-CONFIG.groundHeight+6); ctx.lineTo(i+8, CONFIG.baseHeight-CONFIG.groundHeight+4); ctx.stroke(); }
 
+  // ombre + oiseau
   ctx.beginPath();
   const shadowScale = Math.max(0.6, 1 - Math.abs(bird.vy)/800);
   ctx.ellipse(bird.x+6, Math.min(CONFIG.baseHeight-CONFIG.groundHeight-6, bird.y+bird.radius+12), bird.radius*0.9*shadowScale, bird.radius*0.45*shadowScale, 0, 0, Math.PI*2);
@@ -292,6 +323,7 @@ function draw(){
 
   if(gameState==='gameover'){ ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(0,0,CONFIG.baseWidth,CONFIG.baseHeight); }
 
+  // score
   ctx.fillStyle = cs.getPropertyValue('--text')||'rgba(255,255,255,0.95)';
   ctx.textAlign='center'; ctx.font='20px system-ui, Arial';
   ctx.fillText(`Score: ${score}`, CONFIG.baseWidth/2, 34);
@@ -299,7 +331,7 @@ function draw(){
 
 function loop(ts){
   if(!lastTime) lastTime = ts;
-  const dt = Math.min(0.032, (ts - lastTime)/1000);
+  const dt = Math.min(0.05, (ts - lastTime)/1000); // clamp doux pour éviter le slow-mo perceptible
   lastTime = ts;
   update(dt); draw();
   requestAnimationFrame(loop);
@@ -330,17 +362,34 @@ function updateUI(){
   }
 }
 
-/* ↓ rendu téléphone: utilise visualViewport et enlève le “clamp” pour maximiser */
+/* Centrage/scale vraiment fiable (gère safe-area + visualViewport offset) */
 function setCanvasScale(){
   const holder = document.getElementById('canvasHolder');
   const header = document.querySelector('header');
-  const vw = (window.visualViewport && window.visualViewport.width) ? window.visualViewport.width : window.innerWidth;
-  const vh = (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight;
-  const availableW = Math.max(320, Math.min(holder.clientWidth || vw, vw - 16));
-  const availableH = Math.max(320, vh - (header?.offsetHeight||0) - 16);
+  const vv = window.visualViewport;
+  const vw = vv ? vv.width : window.innerWidth;
+  const vh = vv ? vv.height : window.innerHeight;
+  const insetL = vv ? vv.offsetLeft : 0;
+  const insetT = vv ? vv.offsetTop : 0;
+  const insetR = vv ? (window.innerWidth - (vv.offsetLeft + vw)) : 0;
+
+  // applique des paddings latéraux pour compenser l’offset en paysage iOS
+  holder.style.paddingLeft = insetL + 'px';
+  holder.style.paddingRight = insetR + 'px';
+
+  const headerH = (header?.offsetHeight||0);
+  const availableW = Math.max(320, vw);
+  const availableH = Math.max(320, vh - headerH);
+
   const scale = Math.min(availableW/CONFIG.baseWidth, availableH/CONFIG.baseHeight);
-  canvas.style.width  = Math.round(CONFIG.baseWidth * scale) + 'px';
-  canvas.style.height = Math.round(CONFIG.baseHeight * scale) + 'px';
+  const cssW = Math.round(CONFIG.baseWidth * scale);
+  const cssH = Math.round(CONFIG.baseHeight * scale);
+
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+
+  // assurer un centrage vertical stable
+  holder.style.minHeight = Math.round(availableH) + 'px';
 }
 
 function init(){
@@ -353,7 +402,6 @@ function init(){
 
   document.getElementById('muteBtnHeader').addEventListener('click', e=>{ e.stopPropagation(); SFX.toggleMute(); });
   document.getElementById('themeSelectHeader').addEventListener('change', e=>{ applyTheme(e.target.value); });
-  const volEl=document.getElementById('vol'); if(volEl){ volEl.addEventListener('input', e=>SFX.setVolume(Number(e.target.value)/100)); }
 
   function keyHandler(e){
     const active = document.activeElement, ignore=['INPUT','TEXTAREA','SELECT'];
@@ -368,7 +416,7 @@ function init(){
   canvas.addEventListener('touchstart', e=>{ e.preventDefault(); canvas.focus(); flap(); }, {passive:false});
   canvas.addEventListener('mouseenter', ()=>{ try{ canvas.focus(); }catch{} });
 
-  // ↓ bouton Démarrer/Recommencer : après "gameover", 1er clic = retour à l'état start (stationnaire)
+  // bouton Démarrer/Recommencer
   const startBtn = document.getElementById('startBtn');
   startBtn.addEventListener('click', e=>{
     e.preventDefault(); e.stopPropagation();
@@ -380,7 +428,10 @@ function init(){
 
   window.addEventListener('resize', setCanvasScale);
   window.addEventListener('orientationchange', setCanvasScale);
-  if(window.visualViewport){ window.visualViewport.addEventListener('resize', setCanvasScale); }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', setCanvasScale);
+    window.visualViewport.addEventListener('scroll', setCanvasScale); // utile en paysage
+  }
 
   setCanvasScale();
   requestAnimationFrame(loop);
@@ -399,7 +450,7 @@ function runTests(){
   console.assert(typeof SFX.ensureCtx==='function','SFX.ensureCtx dispo');
   console.assert(typeof SFX.point==='function','SFX.point dispo');
   console.assert(typeof SFX.hit==='function','SFX.hit dispo');
-  console.assert(typeof document.onkeydown!=='undefined','document.onkeydown défini');
+  console.assert(typeof document.onkeydown!== 'undefined','document.onkeydown défini');
 }
 runTests();
 </script>
